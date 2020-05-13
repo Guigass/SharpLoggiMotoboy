@@ -11,6 +11,9 @@ namespace LoggiMotoboy.API
 {
     public class LoggiMotoboy : IDisposable
     {
+        private readonly string urlHomologa = "https://staging.loggi.com/graphql/?=";
+        private readonly string urlProducao = "https://www.loggi.com/graphql";
+
         private readonly GraphQLHttpClient _client;
 
         private string _apiToken;
@@ -18,19 +21,20 @@ namespace LoggiMotoboy.API
 
         public bool IsLogged = false;
 
-        public LoggiMotoboy(string email = null, string apiToken = null, string apiUrl = "https://staging.loggi.com/graphql")
+        public LoggiMotoboy(string email, string password, string apiUrl = "https://www.loggi.com/graphql")
         {
             _client = new GraphQLHttpClient(apiUrl, new NewtonsoftJsonSerializer());
 
             _email = email;
-            _apiToken = apiToken;
+
+            Login(email, password).Wait();
         }
 
         #region GetApiKey
 
         public async Task<GraphQLResponse<RetornoLogin>> Login(string email, string password)
         {
-            var login = new GraphQLRequest
+            var loginQL = new GraphQLRequest
             {
                 Query = @"
                 mutation ($input: LoginMutationInput!) {
@@ -50,12 +54,17 @@ namespace LoggiMotoboy.API
                 }
             };
 
-            var graphQLResponse = await _client.SendMutationAsync<RetornoLogin>(login);
+            GraphQLResponse<RetornoLogin> graphQLResponse = null;
+            graphQLResponse = await _client.SendMutationAsync<RetornoLogin>(loginQL);
 
-            _apiToken = graphQLResponse.Data.Login.User.ApiKey;
-            _email = email;
+            if (graphQLResponse.Errors == null)
+            {
+                _apiToken = graphQLResponse.Data.Login.User.ApiKey;
 
-            IsLogged = true;
+                IsLogged = true;
+
+                _client.HttpClient.DefaultRequestHeaders.Add("Authorization", String.Format("ApiKey {0}:{1}", _email, _apiToken));
+            }
 
             return graphQLResponse;
         }
@@ -64,33 +73,32 @@ namespace LoggiMotoboy.API
 
         #region Estimar Preços
 
-        public async Task<GraphQLResponse<RetornoLogin>> EstimateCreateOrder()
+        public async Task<GraphQLResponse<EstimateCreateOrder>> EstimateCreateOrder(long shopID, string enderecoOrigem, string enderecoDestino)
         {
-            var estimateCreateOrder = new GraphQLRequest
+            if (!IsLogged)
+                throw new Exception("Você precisa estar logado.");
+
+            // TODO Colocar as variaveis fora da string da query.
+
+            var estimateCreateOrderQL = new GraphQLRequest
             {
                 Query = @"
                 query {
                   estimateCreateOrder(
-                    shopId: 1
+                    shopId: " + shopID + @"
                     pickups: [{
                       address: {
-                        lat: -23.5703022
-                        lng: -46.6473154
-                        address: ""Av.Paulista, 100 - Bela Vista, São Paulo - SP, Brasil""
-                        complement: ""8o andar""
+                        address: """ + enderecoOrigem + @"""
                       }
                     }]
                     packages: [{
                       pickupIndex: 0
                       recipient: {
-                        name: ""Cliente A\""
-                        phone: ""11912345678\""
+                        name: ""Cliente A""
+                        phone: ""11912345678""
                       }
                 address: {
-                        lat: -23.635334
-                        lng: -46.529835
-                        address: ""Av. Estados Unidos, 505 - Parque das Nações, Santo André - SP, Brasil\""
-                        complement: ""Apto 133""
+                        address: """ + enderecoDestino + @"""
                       }
                       dimensions: {
                         width: 44
@@ -102,47 +110,6 @@ namespace LoggiMotoboy.API
                         value: ""10.00""
                         method: 2
                         change: ""5.00""
-                      }
-                    }, {
-                      pickupIndex: 0
-                      recipient: {
-                        name: ""Client B""
-                        phone: ""11987654312""
-                      }
-                      address: {
-                        lat: -23.635334
-                        lng: -46.529835
-                        address: ""Av. Brasil, 2000 - Jardim Paulista, São Paulo - SP, 01429-011""
-                        complement: ""Apto""
-                      }
-                      dimensions: {
-                        width: 10
-                        height: 10
-                        weight: 1000
-                        length: 1
-                      }
-                      charge: {
-                        value: ""10.00""
-                        method: 2
-                        change: ""5.00""
-                      }
-                    }, {
-                      pickupIndex: 0
-                      recipient: {
-                        name: ""Client C""
-                        phone: ""11987656789""
-                      }
-                      address: {
-                        lat: -23.635334
-                        lng: -46.529835
-                        address: ""Rua Groenlândia, 12 - Jardim Europa, São Paulo - SP""
-                        complement: ""Apto 21""
-                      }
-                      dimensions: {
-                        width: 10
-                        height: 10
-                        weight: 1000
-                        length: 15
                       }
                     }]
                 )  {
@@ -181,13 +148,105 @@ namespace LoggiMotoboy.API
                 }
             };
 
-            _client.HttpClient.DefaultRequestHeaders.Add("Authorization", String.Format("ApiKey {0}:{1}", _email, _apiToken));
 
-            var graphQLResponse = await _client.SendMutationAsync<RetornoLogin>(estimateCreateOrder);
-
-            _apiToken = graphQLResponse.Data.Login.User.ApiKey;
+            var graphQLResponse = await _client.SendMutationAsync<EstimateCreateOrder>(estimateCreateOrderQL);
 
             return graphQLResponse;
+        }
+
+        #endregion
+
+        #region Lojas
+
+        public async Task<GraphQLResponse<RetornoLogin>> CreateShop()
+        {
+            throw new Exception("Não Implementado");
+
+            var CreateShop = new GraphQLRequest
+            {
+                Query = @"mutation {
+                    createShop (input: {
+                        name: ""Loja Integrando com a Loggi"",
+                        addressCep: ""01418200"",
+                        addressNumber: ""2400"",
+                        addressComplement: ""apto. 61"",
+                        phone: ""11999998888"",
+                        companyId: 1003,
+                        pickupInstructions: ""Entregar na recepção"",
+                        numberOfRadialZones: 0,
+                        externalId: ""integracao1019""
+                    }) {
+                        shop {
+                            pk
+                            name
+                            address {
+                                label
+                    }
+                    pickupInstructions
+                }
+                    }
+                }",
+                Variables = new
+                {
+
+                }
+            };
+
+
+            try
+            {
+                var graphQLResponse = await _client.SendMutationAsync<RetornoLogin>(CreateShop);
+                return graphQLResponse;
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+
+        public async Task<GraphQLResponse<AllShops>> AllShops()
+        {
+            if (!IsLogged)
+                throw new Exception("Você precisa estar logado.");
+
+            var AllShopsQL = new GraphQLRequest
+            {
+                Query = @"query {
+                          allShops {
+                            edges {
+                              node {
+                                name
+                                pickupInstructions
+                                pk
+                                address {
+                                  pos
+                                  addressSt
+                                  addressData
+                                }
+                                chargeOptions {
+                                  label
+                                }
+                                externalId
+                              }
+                            }
+                          }
+                        }",
+                Variables = new
+                {
+
+                }
+            };
+
+
+            try
+            {
+                var graphQLResponse = await _client.SendMutationAsync<AllShops>(AllShopsQL);
+                return graphQLResponse;
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
         }
 
         #endregion
