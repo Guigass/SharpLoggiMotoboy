@@ -18,17 +18,21 @@ namespace LoggiMotoboy.API
 
         public bool IsLogged = false;
 
-        public LoggiMotoboy(string email = null, string apiToken = null, string apiUrl = "https://staging.loggi.com/graphql")
+        public LoggiMotoboy(string apiUrl = "https://staging.loggi.com/graphql")
+        {
+            _client = new GraphQLHttpClient(apiUrl, new NewtonsoftJsonSerializer());
+        }
+
+        public LoggiMotoboy(string email, string password, string apiUrl = "https://staging.loggi.com/graphql")
         {
             _client = new GraphQLHttpClient(apiUrl, new NewtonsoftJsonSerializer());
 
-            _email = email;
-            _apiToken = apiToken;
+            Login(email, password).Wait();
         }
 
         #region GetApiKey
 
-        public async Task<GraphQLResponse<RetornoLogin>> Login(string email, string password)
+        private async Task<GraphQLResponse<RetornoLogin>> Login(string email, string password)
         {
             var login = new GraphQLRequest
             {
@@ -52,8 +56,52 @@ namespace LoggiMotoboy.API
 
             var graphQLResponse = await _client.SendMutationAsync<RetornoLogin>(login);
 
+            if (graphQLResponse.Data.Login.User == null)
+                throw new Exception("Não foi possivel efetuar o login na loggi");
+
+
             _apiToken = graphQLResponse.Data.Login.User.ApiKey;
             _email = email;
+
+            IsLogged = true;
+
+            _client.HttpClient.DefaultRequestHeaders.Add("Authorization", String.Format("ApiKey {0}:{1}", _email, _apiToken));
+
+            return graphQLResponse;
+        }
+
+        #endregion
+
+        #region Get Shops
+
+        public async Task<GraphQLResponse<RetornoShops>> AllShops()
+        {
+            var allShops = new GraphQLRequest
+            {
+                Query = @"
+                query {
+                  allShops {
+                    edges {
+                      node {
+                        name
+                        pickupInstructions
+                        pk
+                        address {
+                          pos
+                          addressSt
+                          addressData
+                        }
+                        chargeOptions {
+                          label
+                        }
+                        externalId
+                      }
+                    }
+                  }
+                }"
+            };
+
+            var graphQLResponse = await _client.SendMutationAsync<RetornoShops>(allShops);
 
             IsLogged = true;
 
@@ -181,7 +229,6 @@ namespace LoggiMotoboy.API
                 }
             };
 
-            _client.HttpClient.DefaultRequestHeaders.Add("Authorization", String.Format("ApiKey {0}:{1}", _email, _apiToken));
 
             var graphQLResponse = await _client.SendMutationAsync<RetornoLogin>(estimateCreateOrder);
 

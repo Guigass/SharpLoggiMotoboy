@@ -1,4 +1,6 @@
-﻿using System;
+﻿using LoggiMotoboy.API.Models;
+using Newtonsoft.Json;
+using System;
 
 namespace LoggiMotoboy.Console
 {
@@ -6,11 +8,15 @@ namespace LoggiMotoboy.Console
     {
         static void Main(string[] args)
         {
-            var loggi = new LoggiMotoboy.API.LoggiMotoboy();
+            using (var loggi = new API.LoggiMotoboy("", ""))
+            {
+                var b = loggi.AllShops().Result;
 
-            var a = loggi.Login("", "").Result;
-
-            var b = loggi.EstimateCreateOrder().Result;
+                foreach (var item in b.Data.AllShops.Edges)
+                {
+                    var adress = JsonConvert.DeserializeObject<AddressData>(item.Node.Address.AddressData);
+                }
+            }
         }
     }
 }
