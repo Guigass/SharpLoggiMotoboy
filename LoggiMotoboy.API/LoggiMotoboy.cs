@@ -74,7 +74,7 @@ namespace LoggiMotoboy.API
 
         #region Get Shops
 
-        public async Task<GraphQLResponse<RetornoShops>> AllShops()
+        public async Task<GraphQLResponse<AllShops>> AllShops()
         {
             var allShops = new GraphQLRequest
             {
@@ -101,7 +101,7 @@ namespace LoggiMotoboy.API
                 }"
             };
 
-            var graphQLResponse = await _client.SendMutationAsync<RetornoShops>(allShops);
+            var graphQLResponse = await _client.SendMutationAsync<AllShops>(allShops);
 
             IsLogged = true;
 
@@ -112,87 +112,16 @@ namespace LoggiMotoboy.API
 
         #region Estimar Preços
 
-        public async Task<GraphQLResponse<RetornoLogin>> EstimateCreateOrder()
+        public async Task<GraphQLResponse<EstimateCreateOrder>> EstimateCreateOrder(int shopId, List<Pickup> pickups, List<Package> packages)
         {
             var estimateCreateOrder = new GraphQLRequest
             {
                 Query = @"
-                query {
+                query estimateCreateOrder ($shopId: Int!, $pickups: [Pickup]!, $packages: [Packages]!){
                   estimateCreateOrder(
-                    shopId: 1
-                    pickups: [{
-                      address: {
-                        lat: -23.5703022
-                        lng: -46.6473154
-                        address: ""Av.Paulista, 100 - Bela Vista, São Paulo - SP, Brasil""
-                        complement: ""8o andar""
-                      }
-                    }]
-                    packages: [{
-                      pickupIndex: 0
-                      recipient: {
-                        name: ""Cliente A\""
-                        phone: ""11912345678\""
-                      }
-                address: {
-                        lat: -23.635334
-                        lng: -46.529835
-                        address: ""Av. Estados Unidos, 505 - Parque das Nações, Santo André - SP, Brasil\""
-                        complement: ""Apto 133""
-                      }
-                      dimensions: {
-                        width: 44
-                        height: 38
-                        weight: 3000
-                        length: 38
-                      }
-                      charge: {
-                        value: ""10.00""
-                        method: 2
-                        change: ""5.00""
-                      }
-                    }, {
-                      pickupIndex: 0
-                      recipient: {
-                        name: ""Client B""
-                        phone: ""11987654312""
-                      }
-                      address: {
-                        lat: -23.635334
-                        lng: -46.529835
-                        address: ""Av. Brasil, 2000 - Jardim Paulista, São Paulo - SP, 01429-011""
-                        complement: ""Apto""
-                      }
-                      dimensions: {
-                        width: 10
-                        height: 10
-                        weight: 1000
-                        length: 1
-                      }
-                      charge: {
-                        value: ""10.00""
-                        method: 2
-                        change: ""5.00""
-                      }
-                    }, {
-                      pickupIndex: 0
-                      recipient: {
-                        name: ""Client C""
-                        phone: ""11987656789""
-                      }
-                      address: {
-                        lat: -23.635334
-                        lng: -46.529835
-                        address: ""Rua Groenlândia, 12 - Jardim Europa, São Paulo - SP""
-                        complement: ""Apto 21""
-                      }
-                      dimensions: {
-                        width: 10
-                        height: 10
-                        weight: 1000
-                        length: 15
-                      }
-                    }]
+                    shopId: $shopId
+                    pickups: $pickups
+                    packages: $packages
                 )  {
                     totalEstimate {
                       totalCost
@@ -225,14 +154,162 @@ namespace LoggiMotoboy.API
                 }",
                 Variables = new
                 {
-
+                    shopId,
+                    pickups,
+                    packages
                 }
             };
 
 
-            var graphQLResponse = await _client.SendMutationAsync<RetornoLogin>(estimateCreateOrder);
+            var graphQLResponse = await _client.SendQueryAsync<EstimateCreateOrder>(estimateCreateOrder);
 
-            _apiToken = graphQLResponse.Data.Login.User.ApiKey;
+            return graphQLResponse;
+        }
+
+        #endregion
+
+        #region Criar Pedido
+
+        public async Task<GraphQLResponse<CreateOrder>> CreateOrder(CreateOrderInput createOrderInput)
+        {
+            var estimateCreateOrder = new GraphQLRequest
+            {
+                Query = @"mutation ($createOrderInput: createOrderMutationInput!) {
+                          createOrder(input: $createOrderInput) {
+                            success
+                            shop
+                        {
+                            pk
+                              name
+                        }
+                        orders {
+                              pk
+                              trackingKey
+                              packages {
+                                pk
+                                status
+                                pickupWaypoint {
+                                  index
+                                  indexDisplay
+                                  eta
+                                  legDistance
+                                }
+                                waypoint {
+                                  index
+                                  indexDisplay
+                                  eta
+                                  legDistance
+                                }
+                              }
+                            }
+                            errors {
+                              field
+                              message
+                            }
+                          }
+                        }",
+                Variables = new
+                {
+                    createOrderInput
+                }
+            };
+
+
+            var graphQLResponse = await _client.SendQueryAsync<CreateOrder>(estimateCreateOrder);
+
+            return graphQLResponse;
+        }
+
+        #endregion
+
+        #region Consulta Pedido
+
+        public async Task<GraphQLResponse<RetrieveOrderPK>> RetrieveOrderWithPk(long id)
+        {
+            var allShops = new GraphQLRequest
+            {
+                Query = @"
+                query retrieveOrderWithPk ($id: Int!) {
+                  retrieveOrderWithPk(orderPk: $id) {
+                    status
+                    statusDisplay
+                    originalEta
+                    totalTime
+                    pricing {
+                      totalCm
+                    }
+                    packages {
+                      pk
+                      shareds {
+                        edges {
+                          node {
+                            trackingUrl
+                          }
+                        }
+                      }
+                    }
+                    currentDriverPosition {
+                      lat
+                      lng
+                      currentWaypointIndex
+                      currentWaypointIndexDisplay
+                    }
+                  }
+                }",
+                Variables = new
+                {
+                    id
+                }
+            };
+
+            var graphQLResponse = await _client.SendMutationAsync<RetrieveOrderPK>(allShops);
+
+            IsLogged = true;
+
+            return graphQLResponse;
+        }
+
+        public async Task<GraphQLResponse<RetrieveOrdersWithTrackingKey>> RetrieveOrdersWithTrackingKey(string traking)
+        {
+            var allShops = new GraphQLRequest
+            {
+                Query = @"
+                query retrieveOrdersWithTrackingKey ($traking: String!) {
+                  retrieveOrdersWithTrackingKey(trackingKey: $traking) {
+                    status
+                    statusDisplay
+                    originalEta
+                    totalTime
+                    pricing {
+                      totalCm
+                    }
+                    packages {
+                      pk
+                      shareds {
+                        edges {
+                          node {
+                            trackingUrl
+                          }
+                        }
+                      }
+                    }
+                    currentDriverPosition {
+                      lat
+                      lng
+                      currentWaypointIndex
+                      currentWaypointIndexDisplay
+                    }
+                  }
+                }",
+                Variables = new
+                {
+                    traking
+                }
+            };
+
+            var graphQLResponse = await _client.SendMutationAsync<RetrieveOrdersWithTrackingKey>(allShops);
+
+            IsLogged = true;
 
             return graphQLResponse;
         }

@@ -26,7 +26,7 @@ namespace LoggiMotoboy.API.Models
     public partial class OrdersEstimate
     {
         [JsonProperty("packages")]
-        public Package[] Packages { get; set; }
+        public List<PackageEstimate> Packages { get; set; }
 
         [JsonProperty("optimized")]
         public Optimized Optimized { get; set; }
@@ -44,7 +44,7 @@ namespace LoggiMotoboy.API.Models
         public double Distance { get; set; }
     }
 
-    public partial class Package
+    public partial class PackageEstimate
     {
         [JsonProperty("isReturn")]
         public bool IsReturn { get; set; }
