@@ -10,6 +10,9 @@ namespace LoggiMotoboy.API.Models
         [JsonProperty("pickupIndex")]
         public long PickupIndex { get; set; }
 
+        [JsonProperty("instructions")]
+        public string Instructions { get; set; }
+
         [JsonProperty("address")]
         public PackageAddress Address { get; set; }
 

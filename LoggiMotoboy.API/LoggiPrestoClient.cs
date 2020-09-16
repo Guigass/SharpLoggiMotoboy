@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace LoggiMotoboy.API
 {
-    public class LoggiMotoboy : IDisposable
+    public class LoggiPrestoClient : IDisposable
     {
         private readonly GraphQLHttpClient _client;
 
@@ -18,12 +18,24 @@ namespace LoggiMotoboy.API
 
         public bool IsLogged = false;
 
-        public LoggiMotoboy(string apiUrl = "https://staging.loggi.com/graphql")
+        public LoggiPrestoClient(string apiUrl = "https://staging.loggi.com/graphql")
         {
             _client = new GraphQLHttpClient(apiUrl, new NewtonsoftJsonSerializer());
         }
 
-        public LoggiMotoboy(string email, string password, string apiUrl = "https://staging.loggi.com/graphql")
+        public LoggiPrestoClient(string apiToken, string email, string apiUrl = "https://staging.loggi.com/graphql", bool logado = true)
+        {
+            _client = new GraphQLHttpClient(apiUrl, new NewtonsoftJsonSerializer());
+
+            _apiToken = apiToken;
+            _email = email;
+
+            IsLogged = logado;
+
+            _client.HttpClient.DefaultRequestHeaders.Add("Authorization", String.Format("ApiKey {0}:{1}", _email, _apiToken));
+        }
+
+        public LoggiPrestoClient(string email, string password, string apiUrl = "https://staging.loggi.com/graphql")
         {
             _client = new GraphQLHttpClient(apiUrl, new NewtonsoftJsonSerializer());
 
@@ -32,7 +44,7 @@ namespace LoggiMotoboy.API
 
         #region GetApiKey
 
-        private async Task<GraphQLResponse<RetornoLogin>> Login(string email, string password)
+        public async Task<GraphQLResponse<RetornoLogin>> Login(string email, string password)
         {
             var login = new GraphQLRequest
             {
@@ -76,7 +88,10 @@ namespace LoggiMotoboy.API
 
         public async Task<GraphQLResponse<AllShops>> AllShops()
         {
-            var allShops = new GraphQLRequest
+            if (!IsLogged)
+                throw new Exception("Usuario não logado");
+
+            var req = new GraphQLRequest
             {
                 Query = @"
                 query {
@@ -101,7 +116,7 @@ namespace LoggiMotoboy.API
                 }"
             };
 
-            var graphQLResponse = await _client.SendMutationAsync<AllShops>(allShops);
+            var graphQLResponse = await _client.SendQueryAsync<AllShops>(req);
 
             IsLogged = true;
 
@@ -114,7 +129,10 @@ namespace LoggiMotoboy.API
 
         public async Task<GraphQLResponse<EstimateCreateOrder>> EstimateCreateOrder(int shopId, List<Pickup> pickups, List<Package> packages)
         {
-            var estimateCreateOrder = new GraphQLRequest
+            if (!IsLogged)
+                throw new Exception("Usuario não logado");
+
+            var req = new GraphQLRequest
             {
                 Query = @"
                 query estimateCreateOrder ($shopId: Int!, $pickups: [Pickup]!, $packages: [Packages]!){
@@ -161,7 +179,7 @@ namespace LoggiMotoboy.API
             };
 
 
-            var graphQLResponse = await _client.SendQueryAsync<EstimateCreateOrder>(estimateCreateOrder);
+            var graphQLResponse = await _client.SendQueryAsync<EstimateCreateOrder>(req);
 
             return graphQLResponse;
         }
@@ -172,7 +190,10 @@ namespace LoggiMotoboy.API
 
         public async Task<GraphQLResponse<CreateOrder>> CreateOrder(CreateOrderInput createOrderInput)
         {
-            var estimateCreateOrder = new GraphQLRequest
+            if (!IsLogged)
+                throw new Exception("Usuario não logado");
+
+            var req = new GraphQLRequest
             {
                 Query = @"mutation ($createOrderInput: createOrderMutationInput!) {
                           createOrder(input: $createOrderInput) {
@@ -215,7 +236,7 @@ namespace LoggiMotoboy.API
             };
 
 
-            var graphQLResponse = await _client.SendQueryAsync<CreateOrder>(estimateCreateOrder);
+            var graphQLResponse = await _client.SendMutationAsync<CreateOrder>(req);
 
             return graphQLResponse;
         }
@@ -226,7 +247,10 @@ namespace LoggiMotoboy.API
 
         public async Task<GraphQLResponse<RetrieveOrderPK>> RetrieveOrderWithPk(long id)
         {
-            var allShops = new GraphQLRequest
+            if (!IsLogged)
+                throw new Exception("Usuario não logado");
+
+            var req = new GraphQLRequest
             {
                 Query = @"
                 query retrieveOrderWithPk ($id: Int!) {
@@ -262,7 +286,7 @@ namespace LoggiMotoboy.API
                 }
             };
 
-            var graphQLResponse = await _client.SendMutationAsync<RetrieveOrderPK>(allShops);
+            var graphQLResponse = await _client.SendQueryAsync<RetrieveOrderPK>(req);
 
             IsLogged = true;
 
@@ -307,7 +331,7 @@ namespace LoggiMotoboy.API
                 }
             };
 
-            var graphQLResponse = await _client.SendMutationAsync<RetrieveOrdersWithTrackingKey>(allShops);
+            var graphQLResponse = await _client.SendQueryAsync<RetrieveOrdersWithTrackingKey>(allShops);
 
             IsLogged = true;
 

@@ -9,6 +9,8 @@ namespace LoggiMotoboy.API.Models
     {
         [JsonProperty("address")]
         public PickupAddress Address { get; set; }
+        [JsonProperty("instructions")]
+        public string Instructions { get; set; }
     }
 
     public class PickupAddress

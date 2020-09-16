@@ -7,8 +7,11 @@ namespace LoggiMotoboy.API.Models
 {
     public class CreateOrderInput
     {
-        [JsonProperty("shopId")]
-        public long ShopId { get; set; }
+        [JsonProperty("shopId", NullValueHandling = NullValueHandling.Ignore)]
+        public long? ShopId { get; set; }
+
+        [JsonProperty("paymentMethod", NullValueHandling = NullValueHandling.Ignore)]
+        public long? PaymentMethod { get; set; }
 
         [JsonProperty("trackingKey")]
         public string TrackingKey { get; set; }
