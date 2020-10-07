@@ -241,6 +241,47 @@ namespace LoggiMotoboy.API
             return graphQLResponse;
         }
 
+        public async Task<GraphQLResponse<RedoOrder>> RedoOrder(long orderId)
+        {
+            if (!IsLogged)
+                throw new Exception("Usuario não logado");
+
+            var RedoOrderInput = new
+            {
+                id = orderId
+            };
+
+            var req = new GraphQLRequest
+            {
+                Query = @"
+                mutation ($redoOrderInput: OrderRedoMutationInput!) {
+                  redoOrder(input: $redoOrderInput) {
+                    success
+                    order {
+                      id
+                      pk
+                      status
+                      packages {
+                        pk
+                        status
+                        statusCode
+                        statusCodeDisplay
+                      }
+                    }
+                  }
+                }",
+                Variables = new
+                {
+                    RedoOrderInput
+                }
+            };
+
+
+            var graphQLResponse = await _client.SendMutationAsync<RedoOrder>(req);
+
+            return graphQLResponse;
+        }
+
         #endregion
 
         #region Consulta Pedido
