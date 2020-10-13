@@ -16,8 +16,8 @@ namespace LoggiMotoboy.API.Models
         [JsonProperty("success")]
         public bool Success { get; set; }
 
-        [JsonProperty("shop")]
-        public Shop Shop { get; set; }
+        //[JsonProperty("shop")]
+        //public Shop Shop { get; set; }
 
         [JsonProperty("orders")]
         public List<Order> Orders { get; set; }

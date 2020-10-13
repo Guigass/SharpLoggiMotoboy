@@ -241,6 +241,34 @@ namespace LoggiMotoboy.API
             return graphQLResponse;
         }
 
+        public async Task<GraphQLResponse<CreateOrder>> CreateOrderCorp(CreateOrderInput createOrderInput)
+        {
+            if (!IsLogged)
+                throw new Exception("Usuario não logado");
+
+            var req = new GraphQLRequest
+            {
+                Query = @"mutation ($createOrderInput: createOrderMutationInput!) {
+                          createOrder(input: $createOrderInput) {
+                            success
+                            errors {
+                            field
+                            message
+                            }
+                            }
+                        }",
+                Variables = new
+                {
+                    createOrderInput
+                }
+            };
+
+
+            var graphQLResponse = await _client.SendMutationAsync<CreateOrder>(req);
+
+            return graphQLResponse;
+        }
+
         public async Task<GraphQLResponse<RedoOrder>> RedoOrder(long orderId)
         {
             if (!IsLogged)
